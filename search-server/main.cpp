@@ -44,7 +44,7 @@ void TestExcludeStopWordsFromAddedDocumentContent() {
         SearchServer server;
         server.AddDocument(doc_id, content, DocumentStatus::ACTUAL, ratings);
         const auto found_docs = server.FindTopDocuments("in"s);
-        ASSERT_EQUAL(found_docs.size(), 1u);
+        ASSERT_EQUAL(found_docs.size(), 1);
         const Document& doc0 = found_docs[0];
         ASSERT_EQUAL(doc0.id, doc_id);
     }
@@ -194,6 +194,143 @@ void TestSortFindedDocumentsByRelevance()
 }
 
 
+//тест проверяет, что функция возвращает документы с использованием предикаты, задаваемой пользователем
+void TestFindByPredicate()
+{
+
+    {
+        SearchServer server;
+
+        server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 8, -3 });
+        server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2 });
+        server.AddDocument(3, "soigne starling eugeny"s, DocumentStatus::BANNED, { 9 });
+
+
+        const auto& found_docs = server.FindTopDocuments("fluffy soigne cat"s, [](int document_id, DocumentStatus status, int rating) { return status == DocumentStatus::BANNED; }) ;
+
+        {
+            //сверяем запрос с документом
+            ASSERT_EQUAL(found_docs.size(), 1);
+            const Document& doc0 = found_docs[0];
+            ASSERT_EQUAL(doc0.id, 3);
+        }
+    }
+
+}
+
+
+void TestFindByStatus()
+{
+    {
+        SearchServer server;
+
+        server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 8, -3 });
+        server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2 });
+        server.AddDocument(3, "soigne starling eugeny"s, DocumentStatus::BANNED, { 9 });
+
+        const auto& found_docs = server.FindTopDocuments("fluffy soigne cat"s, DocumentStatus::BANNED);
+
+        {
+            //сверяем запрос с документом
+            ASSERT_EQUAL(found_docs.size(), 1);
+            const Document& doc0 = found_docs[0];
+            ASSERT_EQUAL(doc0.id, 3);
+        }
+    }
+
+    {
+        SearchServer server;
+
+        server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 8, -3 });
+        server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2 });
+        server.AddDocument(3, "soigne starling eugeny"s, DocumentStatus::BANNED, { 9 });
+
+        const auto& found_docs = server.FindTopDocuments("fluffy soigne cat"s, DocumentStatus::ACTUAL);
+
+        {
+            //сверяем запрос с документами
+            ASSERT_EQUAL(found_docs.size(), 3);
+        }
+    }
+
+    {
+        SearchServer server;
+
+        server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 8, -3 });
+        server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2 });
+        server.AddDocument(3, "soigne starling eugeny"s, DocumentStatus::BANNED, { 9 });
+
+
+
+        {
+            ASSERT(server.FindTopDocuments("fluffy soigne cat"s, DocumentStatus::IRRELEVANT).empty());
+        }
+    }
+
+    {
+        SearchServer server;
+
+        server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 8, -3 });
+        server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { 7, 2, 7 });
+        server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, -12, 2 });
+        server.AddDocument(3, "soigne starling eugeny"s, DocumentStatus::BANNED, { 9 });
+
+
+
+        {
+            ASSERT(server.FindTopDocuments("fluffy soigne cat"s, DocumentStatus::REMOVED).empty());
+        }
+    }
+
+}
+
+
+
+void TestComputeAverageRating() {
+    SearchServer server;
+
+    server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 1, 2, 3 });
+    server.AddDocument(1, "fluffy cat fluffy tail"s, DocumentStatus::ACTUAL, { -7, -2, -7 });
+    server.AddDocument(2, "soigne dog expressive eyes"s, DocumentStatus::ACTUAL, { 5, 12, -2 });
+
+    {
+        const auto found_docs = server.FindTopDocuments("white"s);
+        ASSERT_EQUAL(found_docs[0].rating, (1 + 2 + 3) / 3);
+    }
+
+    {
+        const auto found_docs = server.FindTopDocuments("tail"s);
+        ASSERT_EQUAL(found_docs[0].rating, (-7 -2 - 7) / 3);
+    }
+
+    {
+        const auto found_docs = server.FindTopDocuments("dog"s);
+        ASSERT_EQUAL(found_docs[0].rating, (5 + 12 - 2) / 3);
+    }
+}
+
+
+void TestComputeRelevance() {
+    const auto EPSILON = 1e-6;
+    SearchServer server;
+
+    server.AddDocument(0, "white cat and fancy collar"s, DocumentStatus::ACTUAL, { 1, 2, -3 });
+
+    const auto& documents = server.FindTopDocuments("fluffy soigne cat"s);
+
+    //первых двух слов запроса в документах нет, TF слова "cat" = 0.2 , IDF = log(1)
+    double relevance = 0.2 * log(1);
+
+    {
+        ASSERT(abs(documents[0].relevance - relevance) < EPSILON );
+    }
+}
+
+
 
 // Функция TestSearchServer является точкой входа для запуска тестов
 void TestSearchServer() {
@@ -204,7 +341,10 @@ void TestSearchServer() {
     RUN_TEST(TestMinusWords);
     RUN_TEST(TestMatchedDocuments);
     RUN_TEST(TestSortFindedDocumentsByRelevance);
-
+    RUN_TEST(TestFindByPredicate);
+    RUN_TEST(TestFindByStatus);
+    RUN_TEST(TestComputeAverageRating);
+    RUN_TEST(TestComputeRelevance);
 }
 
 // --------- Окончание модульных тестов поисковой системы -----------

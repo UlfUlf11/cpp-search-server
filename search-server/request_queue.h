@@ -6,7 +6,7 @@
 #include <deque>
 #include <set>
 #include <string>
-#include<vector>
+#include <vector>
 
 
 class RequestQueue {
@@ -40,12 +40,10 @@ private:
 };
 
 
-
     // сделаем "обёртки" для всех методов поиска, чтобы сохранять результаты для нашей статистики
     template <typename DocumentPredicate>
     std::vector<Document> RequestQueue::AddFindRequest(const std::string& raw_query, DocumentPredicate document_predicate) {
         
-        using namespace std;
          auto request = search_server_.FindTopDocuments(raw_query, document_predicate);
          if ( requests_.size() >= min_in_day_ ) { // Удаляем первый запрос
              PopFirstElement();

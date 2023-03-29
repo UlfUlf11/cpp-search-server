@@ -1,11 +1,8 @@
 #pragma once
 
-#include "document.h"
-
 #include <tgmath.h>
 #include <iostream>
 #include <vector>
-
 
 
 template <typename Iterator>
@@ -22,9 +19,12 @@ public:
     
     Iterator end();
     
+    size_t size() const;
+    
 private:
     Iterator begin_;
     Iterator end_;
+    size_t size_;
 };
 
 
@@ -32,7 +32,8 @@ private:
     template <typename Iterator>
     IteratorRange<Iterator>::IteratorRange(Iterator begin, Iterator end) :
     begin_(begin),
-    end_(end)
+    end_(end),
+    size_(distance(begin_, end_))
     {
     }
     
@@ -56,6 +57,10 @@ private:
         return end_;
     }
     
+    template <typename Iterator>
+    size_t IteratorRange<Iterator>::size() const {
+        return size_;
+    }
 
  
 template <typename Iterator>
@@ -127,9 +132,9 @@ template <typename Iterator>
 
 
 template <typename Container>
-auto Paginate(const Container& c, size_t page_size);
+auto Paginate(const Container& container, size_t page_size);
  
 template <typename Container>
-auto Paginate(const Container& c, size_t page_size) {
-    return Paginator(begin(c), end(c), page_size);
+auto Paginate(const Container& container, size_t page_size) {
+    return Paginator(begin(container), end(container), page_size);
 }

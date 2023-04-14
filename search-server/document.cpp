@@ -14,10 +14,3 @@ Document::Document()
         , relevance(relevance)
         , rating(rating) {
     }
-
-
-
-
-
-
-

@@ -24,6 +24,9 @@ using namespace std;
         const double inv_word_count = 1.0 / words.size();
         for (const string& word : words) {
             word_to_document_freqs_[word][document_id] += inv_word_count;
+
+            //добавление частот слов по id документа
+            word_freq_[document_id][word] += inv_word_count;
         }
         documents_.emplace(document_id, DocumentData{ComputeAverageRating(ratings), status});
         document_ids_.push_back(document_id);
@@ -48,15 +51,19 @@ using namespace std;
         return documents_.size();
     }    
     
-    
-    int SearchServer::GetDocumentId(int index) const {
-        return document_ids_.at(index);
-    }    
-    
-    
+    typename std::vector<int>::const_iterator SearchServer::begin() const {
+        return SearchServer::document_ids_.begin();
+    }
+ 
+    typename std::vector<int>::const_iterator SearchServer::end() const {
+        return SearchServer::document_ids_.end();
+    }
+        
 
     tuple<vector<string>, DocumentStatus> SearchServer::MatchDocument(const string& raw_query,
                                                         int document_id) const {
+        
+        LOG_DURATION_STREAM("Operation time", std::cout);                                                    
         const auto query = ParseQuery(raw_query);
  
         vector<string> matched_words;
@@ -81,6 +88,60 @@ using namespace std;
     }    
     
 
+const std::map<std::string, double>& SearchServer::GetWordFrequencies (int document_id) const {
+    static const std::map<std::string, double> empty_map;
+    if (word_freq_.empty()) return empty_map;
+    return word_freq_.at(document_id);
+}
+
+    void SearchServer::RemoveDocument(int document_id) {
+     for (auto it = documents_.begin(); it != documents_.end();) {
+        if (it->first == document_id) {
+            documents_.erase(it++);
+            break;
+        }
+        else {
+            ++it;
+        }
+    }
+        
+    for (auto [word, freq] : GetWordFrequencies(document_id)) {
+        for (auto it = word_to_document_freqs_.at(word).begin(); it != word_to_document_freqs_.at(word).end();) {
+            if (it->first == document_id) {
+                word_to_document_freqs_.at(word).erase(it++);
+                break;
+            }
+            else {
+                ++it;
+            }
+        }
+    }
+        
+
+    for (auto it = document_ids_.begin(); it != document_ids_.end();) {
+        if (*it == document_id) {
+            document_ids_.erase(it++);
+            break;
+        }
+        else {
+            ++it;
+        }
+    }
+            
+        
+    for (auto it = word_freq_.begin(); it != word_freq_.end();) {
+        if (it->first == document_id) {
+            word_freq_.erase(it++);
+            break;
+        }
+        else {
+            ++it;
+        }
+    }        
+        
+    }  
+ 
+
     //private:
     
     bool SearchServer::IsStopWord(const string& word) const {
@@ -97,7 +158,6 @@ using namespace std;
     
     
     
-        //не вынести-ли в другой файл????
     vector<string> SearchServer::SplitIntoWordsNoStop(const string& text) const {
         vector<string> words;
         for (const string& word : SplitIntoWords(text)) {
@@ -160,6 +220,4 @@ using namespace std;
     
     double SearchServer::ComputeWordInverseDocumentFreq(const string& word) const {
         return log(GetDocumentCount() * 1.0 / word_to_document_freqs_.at(word).size());
-    }    
-    
-    
+    }            

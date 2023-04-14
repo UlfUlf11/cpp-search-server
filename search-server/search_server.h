@@ -10,6 +10,12 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include <iterator>
+
+
+#include "log_duration.h"
+
+
 
 class SearchServer {
 public:
@@ -37,13 +43,20 @@ public:
     
     int GetDocumentCount() const;
     
-    int GetDocumentId(int index) const;
+
+    typename std::vector<int>::const_iterator begin() const;
+ 
+    typename std::vector<int>::const_iterator end() const;    
     
-     std::tuple< std::vector< std::string>, DocumentStatus> MatchDocument(const  std::string& raw_query,
+    
+    std::tuple< std::vector< std::string>, DocumentStatus> MatchDocument(const  std::string& raw_query,
                                                         int document_id) const;
 
- 
- 
+    const std::map<std::string, double>& GetWordFrequencies(int document_id) const;
+    
+    void RemoveDocument(int document_id);  
+    
+    
 private:
     struct DocumentData {
         int rating;
@@ -54,6 +67,8 @@ private:
     std::map< std::string,  std::map<int, double>> word_to_document_freqs_;
     std::map<int, DocumentData> documents_;
     std::vector<int> document_ids_;
+    //id документа, слова и TF
+    std::map<int, std::map<std::string, double>> word_freq_;
  
 
     bool IsStopWord(const  std::string& word) const;
@@ -102,7 +117,8 @@ private:
     template <typename DocumentPredicate>
     std::vector<Document> SearchServer::FindTopDocuments(const std::string& raw_query,
                                       DocumentPredicate document_predicate) const {
-        
+                                          
+        LOG_DURATION_STREAM("Operation time", std::cout);
         using namespace std;
         const int MAX_RESULT_DOCUMENT_COUNT = 5;
         const auto query = ParseQuery(raw_query);

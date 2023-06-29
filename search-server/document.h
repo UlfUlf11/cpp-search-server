@@ -3,7 +3,8 @@
 #include <iostream>
 
 
-enum class DocumentStatus {
+enum class DocumentStatus
+{
     ACTUAL,
     IRRELEVANT,
     BANNED,
@@ -11,14 +12,15 @@ enum class DocumentStatus {
 };
 
 
-struct Document {
-    
+struct Document
+{
+
     Document();
- 
+
     Document(int id, double relevance, int rating);
 
-    
+
     int id;
     double relevance;
     int rating;
-}; 
+};

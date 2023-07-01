@@ -6,8 +6,6 @@
 #include <vector>
 
 
-using namespace std::string_literals;
-
 template <typename Key, typename Value>
 class ConcurrentMap {
 private:
@@ -17,8 +15,9 @@ private:
     };
 
 public:
-    static_assert(std::is_integral_v<Key>, "ConcurrentMap supports only integer keys"s);
+    static_assert(std::is_integral_v<Key>, "ConcurrentMap supports only integer keys");
 
+    
     struct Access {
         std::lock_guard<std::mutex> guard;
         Value& ref_to_value;
@@ -59,7 +58,9 @@ ConcurrentMap<Key, Value>::ConcurrentMap(size_t bucket_count)
 
 template <typename Key, typename Value>
 std::size_t ConcurrentMap<Key, Value>::erase(const Key& key) {
-    return buckets_[std::abs(static_cast<int>(key % buckets_.size()))].map.erase(key);
+    auto bucket = buckets_[std::abs(static_cast<int>(key % buckets_.size()))]; 
+    std::lock_guard lock_guard_bucket(bucket.mutex_);
+    return bucket.map_.erase(key);
 }
 
 template <typename Key, typename Value>
